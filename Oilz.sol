@@ -394,11 +394,8 @@ abstract contract ERC20Detailed is IERC20 {
 }
 
 contract Oilz is ERC20Detailed, Ownable {
-
     using SafeMath for uint256;
     using SafeMathInt for int256;
-
-    event LogRebase(uint256 indexed epoch, uint256 totalSupply);
 
     string public _name = "Oilz";
     string public _symbol = "OILZ";
@@ -406,11 +403,6 @@ contract Oilz is ERC20Detailed, Ownable {
 
     IPancakeSwapPair public pairContract;
     mapping(address => bool) _isFeeExempt;
-
-    modifier validRecipient(address to) {
-        require(to != address(0x0));
-        _;
-    }
 
     uint256 public constant DECIMALS = 5;
     uint256 public constant MAX_UINT256 = ~uint256(0);
@@ -442,15 +434,9 @@ contract Oilz is ERC20Detailed, Ownable {
     IPancakeSwapRouter public router;
     address public pair;
     bool inSwap = false;
-    modifier swapping() {
-        inSwap = true;
-        _;
-        inSwap = false;
-    }
 
     uint256 private constant TOTAL_GONS =
         MAX_UINT256 - (MAX_UINT256 % INITIAL_FRAGMENTS_SUPPLY);
-
     uint256 private constant MAX_SUPPLY = 325 * 10**7 * 10**DECIMALS;
 
     bool public _autoRebase;
@@ -465,8 +451,9 @@ contract Oilz is ERC20Detailed, Ownable {
     mapping(address => mapping(address => uint256)) private _allowedFragments;
     mapping(address => bool) public blacklist;
 
-    constructor() ERC20Detailed("Oilz", "OILZ", uint8(DECIMALS)) Ownable() {
+    event LogRebase(uint256 indexed epoch, uint256 totalSupply);
 
+    constructor() ERC20Detailed("Oilz", "OILZ", uint8(DECIMALS)) Ownable() {
         router = IPancakeSwapRouter(0x10ED43C718714eb63d5aA57B78B54704E256024E); 
         pair = IPancakeSwapFactory(router.factory()).createPair(
             router.WETH(),
@@ -496,8 +483,18 @@ contract Oilz is ERC20Detailed, Ownable {
         emit Transfer(address(0x0), treasuryReceiver, _totalSupply);
     }
 
+    modifier validRecipient(address to) {
+        require(to != address(0x0));
+        _;
+    }
+
+    modifier swapping() {
+        inSwap = true;
+        _;
+        inSwap = false;
+    }
+
     function rebase() internal {
-        
         if ( inSwap ) return;
         uint256 rebaseRate;
         uint256 deltaTimeFromInit = block.timestamp - _initRebaseStartTime;
@@ -566,7 +563,6 @@ contract Oilz is ERC20Detailed, Ownable {
         address recipient,
         uint256 amount
     ) internal returns (bool) {
-
         require(!blacklist[sender] && !blacklist[recipient], "in_blacklist");
 
         if (inSwap) {
@@ -676,7 +672,6 @@ contract Oilz is ERC20Detailed, Ownable {
     }
 
     function swapBack() internal swapping {
-
         uint256 amountToSwap = _gonBalances[address(this)].div(_gonsPerFragment);
 
         if( amountToSwap == 0) {
@@ -716,7 +711,6 @@ contract Oilz is ERC20Detailed, Ownable {
     }
 
     function withdrawAllToTreasury() external swapping onlyOwner {
-
         uint256 amountToSwap = _gonBalances[address(this)].div(_gonsPerFragment);
         require( amountToSwap > 0,"There is no Oilz token deposited in token contract");
         address[] memory path = new address[](2);
@@ -761,7 +755,7 @@ contract Oilz is ERC20Detailed, Ownable {
     function shouldSwapBack() internal view returns (bool) {
         return 
             !inSwap &&
-            msg.sender != pair  ; 
+            msg.sender != pair; 
     }
 
     function setAutoRebase(bool _flag) external onlyOwner {
@@ -774,7 +768,7 @@ contract Oilz is ERC20Detailed, Ownable {
     }
 
     function setAutoAddLiquidity(bool _flag) external onlyOwner {
-        if(_flag) {
+        if (_flag) {
             _autoAddLiquidity = _flag;
             _lastAddLiquidityTime = block.timestamp;
         } else {
