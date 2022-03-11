@@ -411,13 +411,21 @@ contract Oilz is ERC20Detailed, Ownable {
     uint256 private constant INITIAL_FRAGMENTS_SUPPLY =
         325 * 10**3 * 10**DECIMALS;
 
-    uint256 public liquidityFee = 40;
-    uint256 public treasuryFee = 25;
-    uint256 public oilzInsuranceFundFee = 50;
-    uint256 public sellFee = 20;
-    uint256 public firePitFee = 25;
-    uint256 public totalFee =
-        liquidityFee.add(treasuryFee).add(oilzInsuranceFundFee).add(
+    uint256 public liquidityBuyFee = 20;
+    uint256 public liquiditySellFee = 50;
+
+    uint256 public treasuryBuyFee = 20;
+    uint256 public treasurySellFee = 60;
+
+    uint256 public oilzInsuranceFundFee = 40;
+    uint256 public firePitFee = 30;
+
+    uint256 public totalBuyFee =
+        liquidityBuyFee.add(treasuryBuyFee).add(oilzInsuranceFundFee).add(
+            firePitFee
+        );
+    uint256 public totalSellFee =
+        liquiditySellFee.add(treasurySellFee).add(oilzInsuranceFundFee).add(
             firePitFee
         );
     uint256 public feeDenominator = 1000;
@@ -461,7 +469,7 @@ contract Oilz is ERC20Detailed, Ownable {
         );
       
         autoLiquidityReceiver = 0xbEA342E846489Af10e4880978E48890f6C32764F;
-        treasuryReceiver = 0xfA82f7fdE39707464dC646de2E677DaD32968704; 
+        treasuryReceiver = 0xA71A95f60bbb3bC267139A466c0B7Ea6cbe68C8C; 
         oilzInsuranceFundReceiver = 0x0B5715F93110D6d84c88994865ce9b3787b0AFbe;
         firePit = 0xB171666D2b193D2099030277F4eB94016cab3854;
 
@@ -603,12 +611,14 @@ contract Oilz is ERC20Detailed, Ownable {
         address recipient,
         uint256 gonAmount
     ) internal  returns (uint256) {
-        uint256 _totalFee = totalFee;
-        uint256 _treasuryFee = treasuryFee;
+        uint256 _totalFee = totalBuyFee;
+        uint256 _treasuryFee = treasuryBuyFee;
+        uint256 _liquidityFee = liquidityBuyFee;
 
         if (recipient == pair) {
-            _totalFee = totalFee.add(sellFee);
-            _treasuryFee = treasuryFee.add(sellFee);
+            _totalFee = totalSellFee;
+            _treasuryFee = treasurySellFee;
+            _liquidityFee = liquiditySellFee;
         }
 
         uint256 feeAmount = gonAmount.mul(_totalFee).div(feeDenominator);
@@ -620,7 +630,7 @@ contract Oilz is ERC20Detailed, Ownable {
             gonAmount.mul(_treasuryFee.add(oilzInsuranceFundFee)).div(feeDenominator)
         );
         _gonBalances[autoLiquidityReceiver] = _gonBalances[autoLiquidityReceiver].add(
-            gonAmount.mul(liquidityFee).div(feeDenominator)
+            gonAmount.mul(_liquidityFee).div(feeDenominator)
         );
         
         emit Transfer(sender, address(this), feeAmount.div(_gonsPerFragment));
@@ -697,14 +707,14 @@ contract Oilz is ERC20Detailed, Ownable {
         );
 
         (bool success, ) = payable(treasuryReceiver).call{
-            value: amountETHToTreasuryAndSIF.mul(treasuryFee).div(
-                treasuryFee.add(oilzInsuranceFundFee)
+            value: amountETHToTreasuryAndSIF.mul(treasuryBuyFee).div(
+                treasuryBuyFee.add(oilzInsuranceFundFee)
             ),
             gas: 30000
         }("");
         (success, ) = payable(oilzInsuranceFundFee).call{
             value: amountETHToTreasuryAndSIF.mul(oilzInsuranceFundFee).div(
-                treasuryFee.add(oilzInsuranceFundFee)
+                treasuryBuyFee.add(oilzInsuranceFundFee)
             ),
             gas: 30000
         }("");
